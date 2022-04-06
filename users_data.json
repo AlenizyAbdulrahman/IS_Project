@@ -1,14 +1,8 @@
 {
     "gg": [
         {
-            "password": "02da5ffa4a7c21c250ffd8f41e557699",
-            "salt": 22
-        }
-    ],
-    "hh": [
-        {
-            "password": "5d4125261dcfc6b14e1d5e33542c4225",
-            "salt": 95
+            "password": "4af7f49ab3b475454535337073f279be",
+            "salt": 48
         }
     ]
 }
