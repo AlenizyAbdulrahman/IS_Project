@@ -1,7 +1,10 @@
+from cProfile import label
+from cgitb import text
 from logging import root
 from tkinter import*
 from tkinter import ttk
 from tkinter import font
+from tkinter import filedialog
 from turtle import bgcolor, left, right, width
 import tkinter as tk
 import json
@@ -16,7 +19,7 @@ class mainpage(Tk):
     def __init__(self):
         super().__init__()
         self.geometry("650x600")
-        self.title('login')
+        self.title('Main page')
         self.config(bg='#669BBC')
         self.resizable(False,False)
 
@@ -24,8 +27,8 @@ class mainpage(Tk):
         frame.place(x=120,y=50,width=500,height=400)
 
         headline = Label(frame, text='Please select option.', fg='white',bg='#669BBC',font=('Courier',30,'bold'),pady=0).place(x=0)
-        btn_send = Button(frame,text='Send file',bg='#F3A712',bd=0,font=('Courier',18),command=self.send).place(x=50,y=200,width=350,height=50)
-        btn_recive = Button(frame,text='Recive file',bg='#F3A712',bd=0,font=('Courier',18),command=self.recieve).place(x=50,y=300,width=350,height=50)
+        btn_send = Button(frame,text='Send',bg='#F3A712',bd=0,font=('Courier',18),command=self.send).place(x=50,y=100,width=350,height=50)
+        btn_recive = Button(frame,text='Receive',bg='#F3A712',bd=0,font=('Courier',18),command=self.recieve).place(x=50,y=200,width=350,height=50)
     def send(self):
         sender()
         self.destroy()
@@ -38,14 +41,122 @@ class sender(Tk):
     def __init__(self):
         super().__init__()
         self.geometry("650x600")
-        self.title('login')
+        self.title('Send')
+        self.config(bg='#669BBC')
+        self.resizable(False,False)
+
+        frame = Frame(self,bg='#669BBC')
+        frame.place(x=120,y=50,width=500,height=400)
+        headline = Label(frame, text='What you want to send.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=0)
+        btn_send = Button(frame,text='Send file',bg='#F3A712',bd=0,font=('Courier',18),command=self.file).place(x=50,y=150,width=350,height=50)
+        btn_send2 = Button(frame,text='Send Text',bg='#F3A712',bd=0,font=('Courier',18),command=self.text).place(x=50,y=250,width=350,height=50)
+    def file(self):
+        send_file()
+        self.destroy()
+    def text(self):
+        send_text()
+        self.destroy()
+
+class send_file(Tk):
+    def __init__(self):
+        super().__init__()
+        self.geometry("650x600")
+        self.title('Send File')
+        self.config(bg='#669BBC')
+        self.resizable(False,False)
+
+        frame = Frame(self,bg='#669BBC')
+        frame.place(x=120,y=50,width=500,height=400)
+        headline = Label(frame, text='Upload File.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=100)
+        btn_dir = Button(frame,text='Choose file',bg='#F3A712',bd=0,font=('Courier',18),command=self.dialoge).place(x=50,y=50,width=350,height=50)
+        btn_send = Button(frame,text='Send',bg='#F3A712',bd=0,font=('Courier',10),command=self.send_to).place(x=180,y=150,width=100,height=40)
+        self.path_lbl = Label(frame, fg='red',bg='white',relief=RAISED)
+        self.path_lbl.pack(pady=110)
+        self.path_lbl.place(x=130,y=110)
+
+    def dialoge(self):
+        self.file = filedialog.askopenfilename(filetypes=[('All types','*.*')]) #file path
+        self.path_lbl.config(text=self.file)
+    def send_to(self):
+        pass
+
+
+
+class send_text(Tk):
+    
+    def __init__(self):
+        super().__init__()
+        self.geometry("650x600")
+        self.title('Send Text')
         self.config(bg='#669BBC')
         self.resizable(False,False)
 
         frame = Frame(self,bg='#669BBC')
         frame.place(x=120,y=50,width=500,height=400)
 
+        headline = Label(frame, text='write your text here.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=30)
+        self.txt= tk.Entry(frame,width=100, font = ('arial',20,'bold'))
+        self.txt.grid()
+        self.txt.place(y=70)
+        btn_send = Button(frame,text='Send',bg='#F3A712',bd=0,font=('Courier',10),command=self.send_to).place(x=120,y=150,width=100,height=40)
+        btn_clr = Button(frame,text='Clear',bg='#F3A712',bd=0,font=('Courier',10),command=self.clr).place(x=240,y=150,width=100,height=40)
+
+    def send_to(self):
+        print(self.txt.get())
+    def clr(self):
+        self.txt.delete(0,END)
+    
+
+
 class reciever(Tk):
+    def __init__(self):
+        super().__init__()
+        self.geometry("650x600")
+        self.title('Recieve')
+        self.config(bg='#669BBC')
+        self.resizable(False,False)
+
+        frame = Frame(self,bg='#669BBC')
+        frame.place(x=120,y=50,width=500,height=400)
+        headline = Label(frame, text='What you want to receive.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=0)
+        btn_recieve = Button(frame,text='receive file',bg='#F3A712',bd=0,font=('Courier',18),command=self.file).place(x=50,y=120,width=350,height=50)
+        btn_recieve2 = Button(frame,text='receive Text',bg='#F3A712',bd=0,font=('Courier',18),command=self.text).place(x=50,y=220,width=350,height=50)
+    def file(self):
+        receive_file()
+        self.destroy()
+    def text(self):
+        receive_text()
+        self.destroy()
+
+    def fi_not(self):
+        messagebox.showinfo('Recieve msg','You have received one file , please select "Recieve file " and choose the path')
+    def txt_not(self):
+        messagebox.showinfo('Recieve msg','You have received one text , please select "Recieve text " and click on Recieve')
+
+class receive_file(Tk):
+    def __init__(self):
+        super().__init__()
+        self.geometry("650x600")
+        self.title('file recieve')
+        self.config(bg='#669BBC')
+        self.resizable(False,False)
+
+        frame = Frame(self,bg='#669BBC')
+        frame.place(x=120,y=50,width=500,height=400)
+        headline = Label(frame, text='Select Folder.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=100)
+        btn_dir = Button(frame,text='Choose Folder',bg='#F3A712',bd=0,font=('Courier',18),command=self.dialoge).place(x=50,y=50,width=350,height=50)
+        btn_save = Button(frame,text='Save',bg='#F3A712',bd=0,font=('Courier',10),command=self.save_to).place(x=180,y=150,width=100,height=40)
+        self.path_lbl = Label(frame, fg='red',bg='white',relief=RAISED)
+        self.path_lbl.pack(pady=110)
+        self.path_lbl.place(x=170,y=110)
+
+    def dialoge(self):
+        self.folder = filedialog.askdirectory() #folder path
+        self.path_lbl.config(text=self.folder)
+    def save_to(self):
+        pass
+
+class receive_text(Tk):
     def __init__(self):
         super().__init__()
         self.geometry("650x600")
@@ -54,7 +165,30 @@ class reciever(Tk):
         self.resizable(False,False)
 
         frame = Frame(self,bg='#669BBC')
-        frame.place(x=120,y=50,width=500,height=400)
+        frame.place(x=120,y=50,width=500,height=500)
+
+        headline = Label(frame, text='Cipher Text.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=100)
+        self.txt= Text(frame,width=30,height=0, font = ('arial',20,'bold'))
+        self.txt.pack()
+        self.txt.place(y=70)
+        btn_rec = Button(frame,text='Recieve',bg='#F3A712',bd=0,font=('Courier',10),command=self.rec_to).place(x=120,y=130,width=100,height=40)
+        btn_clr = Button(frame,text='Clear',bg='#F3A712',bd=0,font=('Courier',10),command=self.clr).place(x=240,y=130,width=100,height=40)
+
+        headline2 = Label(frame, text='Plain Text.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=100,y=300)
+        self.txt2= Text(frame,width=30,height=0, font = ('arial',20,'bold'))
+        self.txt2.pack()
+        self.txt2.place(y=350)
+        btn_rec2 = Button(frame,text='Recieve',bg='#F3A712',bd=0,font=('Courier',10),command=self.rec_to2).place(x=120,y=400,width=100,height=40)
+        btn_clr2 = Button(frame,text='Clear',bg='#F3A712',bd=0,font=('Courier',10),command=self.clr2).place(x=240,y=400,width=100,height=40)
+    
+    def rec_to(self):
+        self.txt.insert(1.0,"hello")
+    def clr(self):
+        self.txt.delete(1.0,END)
+    def rec_to2(self):
+        self.txt2.insert(1.0,"hello")
+    def clr2(self):
+        self.txt2.delete(1.0,END)
 
 
 class signinpage(Tk):
