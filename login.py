@@ -1,5 +1,6 @@
 from cProfile import label
 from cgitb import text
+from ipaddress import ip_address
 from logging import root
 from tkinter import*
 from tkinter import ttk
@@ -15,6 +16,7 @@ import random
 import rsa
 import socket
 import os
+import time
 
 HOST_IP = "localhost"
 Port_NO = 9999
@@ -109,18 +111,38 @@ class send_file(Tk):
         #send the file to reciever
     def send_to(self):
         reciever(self.user).fi_not()
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind((HOST_IP, Port_NO))
-        self.server.listen()
-        self.client_socket, self.address = self.server.accept()
-        #send file name
-        self.client_socket.send(self.file_path.encode())
-        #open and read the file 
-        with open(self.file_path,"rb") as file:
-            self.data = file.read(1024)
-            self.client_socket.sendall(self.data)
-        self.client_socket.close()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((HOST_IP, Port_NO))
+        sock.listen(5)
+        # Accepting the connection.
+        client, addr = sock.accept()
 
+        # Getting file details.
+        file_name = self.file_path
+        file_size = os.path.getsize(file_name)
+
+        # Sending file_name and detail.
+        client.send(file_name.encode())
+        client.send(str(file_size).encode())
+
+        # Opening file and sending data.
+        with open(file_name, "rb") as file:
+            c = 0
+            # Starting the time capture.
+            start_time = time.time()
+
+            # Running loop while c != file_size.
+            while c <= file_size:
+                data = file.read(1024)
+                if not (data):
+                    break
+                client.sendall(data)
+                c += len(data)
+
+            # Ending the time capture.
+            end_time = time.time()
+        # Cloasing the socket.
+        sock.close()
 
 
 class send_text(Tk):
@@ -228,16 +250,39 @@ class receive_file(Tk):
         self.path_lbl.config(text=self.folder)
         #save the file in folder
     def save_to(self):
-        self.client_connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_connection.connect((HOST_IP, Port_NO))
-        #recieve file name
-        self.filename = self.client_connection.recv(1024).decode()
-        #open and write the file
-        with open(str(self.folder)+"/"+str(os.path.basename(self.filename)),"wb") as file:
-            self.data = self.client_connection.recv(1024)
-            file.write(self.data)
 
-        self.client_connection.close()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Trying to connect to socket.
+        try:
+            sock.connect((HOST_IP, Port_NO))
+        except:
+            print("Unable to connect")
+            exit(0)
+
+        # Send file details.
+        file_name = sock.recv(100).decode()
+        file_size = sock.recv(100).decode()
+
+        # Opening and reading file.
+        with open(str(self.folder)+"/"+str(os.path.basename(file_name)), "wb") as file:
+            c = 0
+            # Starting the time capture.
+            start_time = time.time()
+
+            # Running the loop while file is recieved.
+            while c <= int(file_size):
+                data = sock.recv(1024)
+                if not (data):
+                    break
+                file.write(data)
+                c += len(data)
+
+            # Ending the time capture.
+            end_time = time.time()
+
+        # Closing the socket.
+        sock.close()
+
 
 class receive_text(Tk):
     global_msgb = ""
