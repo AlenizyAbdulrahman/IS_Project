@@ -1,5 +1,6 @@
 from cProfile import label
 from cgitb import text
+import email
 from ipaddress import ip_address
 from logging import root
 from tkinter import*
@@ -17,13 +18,15 @@ import rsa
 import socket
 import os
 import time
+from cryptography.fernet import Fernet
 
 HOST_IP = "localhost"
-Port_NO = 9999
+Port_NO = 9994
 
 #mainpage you can select either send or recieve
 class mainpage(Tk):
     def __init__(self,user):
+
         #create screen layout
         super().__init__()
         self.user=user
@@ -33,19 +36,23 @@ class mainpage(Tk):
         self.resizable(False,False)
         frame = Frame(self,bg='#669BBC')
         frame.place(x=120,y=50,width=650,height=600)
+
         #create buttones
         headline = Label(frame, text='Please select option.', fg='white',bg='#669BBC',font=('Courier',30,'bold'),pady=0).place(x=0,y=50)
         btn_send = Button(frame,text='Send',bg='#F3A712',bd=0,font=('Courier',18),command=self.send).place(x=50,y=120,width=350,height=50)
         btn_recive = Button(frame,text='Receive',bg='#F3A712',bd=0,font=('Courier',18),command=self.recieve).place(x=50,y=200,width=350,height=50)
         btn_back = Button(frame,text='Back',bg='#F3A712',bd=0,font=('Courier',10),command=self.back_btn).place(x=0,y=0,width=60,height=30)
+
         #back to previous page
     def back_btn(self):
         login()
         self.destroy()
+
         #go to send page
     def send(self):
         sender(self.user)
         self.destroy()
+
         #go to recieve page
     def recieve(self):
         reciever(self.user)
@@ -54,6 +61,7 @@ class mainpage(Tk):
 
 class sender(Tk):
     def __init__(self,user):
+
         #create screen layout
         super().__init__()
         self.user=user
@@ -63,26 +71,62 @@ class sender(Tk):
         self.resizable(False,False)
         frame = Frame(self,bg='#669BBC')
         frame.place(x=120,y=50,width=650,height=600)
+
         #create buttones       
         headline = Label(frame, text='What you want to send.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=0,y=50)
         btn_send = Button(frame,text='Send file',bg='#F3A712',bd=0,font=('Courier',18),command=self.file).place(x=50,y=150,width=350,height=50)
         btn_send2 = Button(frame,text='Send Text',bg='#F3A712',bd=0,font=('Courier',18),command=self.text).place(x=50,y=250,width=350,height=50)
         btn_back = Button(frame,text='Back',bg='#F3A712',bd=0,font=('Courier',10),command=self.back_btn).place(x=0,y=0,width=60,height=30)
+
         #back to previous page        
     def back_btn(self):
         mainpage(self.user)
         self.destroy()
+
         #go to send file page
     def file(self):
         send_file(self.user)
         self.destroy()
+
         #go to send txt page
     def text(self):
         send_text(self.user)
         self.destroy()
 
+
+    #this function will decrypt the file
+def dec(path,user,folder):
+
+    # load the private key 
+    prkey = open(f'{user}PrivateKey.key','rb')
+    pkey = prkey.read()
+    private_key = rsa.PrivateKey.load_pkcs1(pkey)
+
+    #load the encrypted symmetric key
+    e = open('encrypted_key','rb')
+    ekey = e.read()
+
+    #decrypt symmetric key with the private key
+    dpubkey = rsa.decrypt(ekey,private_key)
+    cipher = Fernet(dpubkey)
+
+    #open and read the encrypted file
+    encrypted_data = open(path,'rb')
+    edata = encrypted_data.read()
+
+    #decrypt the data
+    decrypted_data = cipher.decrypt(edata)
+
+    #write the decrypted data in file
+    f = open(folder+'/decrypted'+str(os.path.basename(path)),'wb')
+    f.write(decrypted_data)
+    f.close()
+    os.remove(str(os.path.basename(path)))
+
+
 class send_file(Tk):
     def __init__(self,user):
+
          #create screen layout       
         super().__init__()
         self.user=user
@@ -92,6 +136,7 @@ class send_file(Tk):
         self.resizable(False,False)
         frame = Frame(self,bg='#669BBC')
         frame.place(x=120,y=50,width=650,height=600)
+
         #create buttones 
         headline = Label(frame, text='Upload File.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=100,y=50)
         btn_dir = Button(frame,text='Choose file',bg='#F3A712',bd=0,font=('Courier',18),command=self.dialoge).place(x=50,y=50,width=350,height=50)
@@ -100,25 +145,57 @@ class send_file(Tk):
         self.path_lbl.pack(pady=110)
         self.path_lbl.place(x=130,y=110)
         btn_back = Button(frame,text='Back',bg='#F3A712',bd=0,font=('Courier',10),command=self.back_btn).place(x=0,y=0,width=60,height=30)
+
         #back to previous page       
     def back_btn(self):
         sender(self.user)
         self.destroy()
-        # open file ecplorer to chooce file
+
+        # open file explorer to chooce file
     def dialoge(self):
         self.file_path = filedialog.askopenfilename(filetypes=[('All types','*.*')]) #file path
         self.path_lbl.config(text=self.file_path)
+
         #send the file to reciever
     def send_to(self):
+
+        # create the symmetric key
+        key = Fernet.generate_key()
+        cipher = Fernet(key)
+
+        # open file for encrypting
+        myfile = open(self.file_path,'rb')
+        myfiledata= myfile.read()
+
+        # encrypt the data
+        encrypted_data = cipher.encrypt(myfiledata)
+        edata = open('encrypted'+str(os.path.basename(self.file_path)),'wb')
+        edata.write(encrypted_data)
+
+        #notify the reciver 
         reciever(self.user).fi_not()
+
+        #create socket and accept the connection with client
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((HOST_IP, Port_NO))
         sock.listen(5)
-        # Accepting the connection.
         client, addr = sock.accept()
 
+        #get user name
+        user_name = client.recv(1024).decode()
+
+        # open the public key file and load the file
+        pkey = open(f'{user_name}PublicKey.key','rb')
+        pkdata = pkey.read()
+        pubkey = rsa.PublicKey.load_pkcs1(pkdata)
+
+        # encrypt the symmetric key file with the public key
+        encrypted_key = rsa.encrypt(key,pubkey)
+        ekey = open('encrypted_key','wb')
+        ekey.write(encrypted_key)
+
         # Getting file details.
-        file_name = self.file_path
+        file_name = 'encrypted'+str(os.path.basename(self.file_path))
         file_size = os.path.getsize(file_name)
 
         # Sending file_name and detail.
@@ -148,6 +225,7 @@ class send_file(Tk):
 class send_text(Tk):
     
     def __init__(self,user):
+
          #create screen layout    
         super().__init__()
         self.user=user
@@ -157,6 +235,7 @@ class send_text(Tk):
         self.resizable(False,False)
         frame = Frame(self,bg='#669BBC')
         frame.place(x=120,y=50,width=650,height=600)
+
         #create buttones 
         headline = Label(frame, text='write your text here.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=30,y=50)
         self.txt= tk.Entry(frame,width=35, font = ('arial',18,'bold'))
@@ -165,19 +244,50 @@ class send_text(Tk):
         btn_send = Button(frame,text='Send',bg='#F3A712',bd=0,font=('Courier',10),command=self.send_to).place(x=120,y=150,width=100,height=40)
         btn_clr = Button(frame,text='Clear',bg='#F3A712',bd=0,font=('Courier',10),command=self.clr).place(x=240,y=150,width=100,height=40)
         btn_back = Button(frame,text='Back',bg='#F3A712',bd=0,font=('Courier',10),command=self.back_btn).place(x=0,y=0,width=60,height=30)
+
         #back to previous page 
     def back_btn(self):
         sender(self.user)
         self.destroy()
+
         # send text to reciever
     def send_to(self):
-        reciever().txt_not()
+
+        #notify the reciever 
+        reciever(self.user).txt_not()
+
+        #create socket and accept the connection
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind((HOST_IP, Port_NO))
         self.server.listen()
         self.client_socket, self.address = self.server.accept()
-        self.client_socket.send(bytes(self.txt.get(),"utf-8"))
+
+        #get user name
+        user_name = self.client_socket.recv(1024).decode()
+
+    # create the symmetric key
+        key = Fernet.generate_key()
+        cipher = Fernet(key)
+
+        # encrypt the data
+        encrypted_data = cipher.encrypt(self.txt.get().encode()) 
+
+        # open the public key file and load the file
+        pkey = open(f'{user_name}PublicKey.key','rb')
+        pkdata = pkey.read()
+        pubkey = rsa.PublicKey.load_pkcs1(pkdata)
+
+        # encrypt the symmetric key file with the public key
+        encrypted_key = rsa.encrypt(key,pubkey)
+        ekey = open('encrypted_key','wb')
+        ekey.write(encrypted_key)
+
+       #send the encrypted data to client
+        self.client_socket.send(encrypted_data)
+
+        #close the connection
         self.client_socket.close()
+
         #clear text entery 
     def clr(self):
         self.txt.delete(0,END)
@@ -186,6 +296,7 @@ class send_text(Tk):
 
 class reciever(Tk):
     def __init__(self,user):
+
          #create screen layout  
         super().__init__()
         self.user=user
@@ -195,34 +306,43 @@ class reciever(Tk):
         self.resizable(False,False)
         frame = Frame(self,bg='#669BBC')
         frame.place(x=120,y=50,width=650,height=600)
+
         #create buttones 
         headline = Label(frame, text='What you want to receive.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=0,y=50)
         btn_recieve = Button(frame,text='receive file',bg='#F3A712',bd=0,font=('Courier',18),command=self.file).place(x=50,y=120,width=350,height=50)
         btn_recieve2 = Button(frame,text='receive Text',bg='#F3A712',bd=0,font=('Courier',18),command=self.text).place(x=50,y=220,width=350,height=50)
         btn_back = Button(frame,text='Back',bg='#F3A712',bd=0,font=('Courier',10),command=self.back_btn).place(x=0,y=0,width=60,height=30)
+
         #back to previous page        
     def back_btn(self):
         mainpage(self.user)
         self.destroy()
+
         #go to recieve file page
     def file(self):
         receive_file(self.user)
         self.destroy()
+
         #go to recieve text page
     def text(self):
         receive_text(self.user)
         self.destroy()
+
         #notify if file recieved
     def fi_not(self):
         self.destroy()
         messagebox.showinfo('Recieve msg','You have received one file , please select "Recieve file " and choose the path')
+
         #notify if text recieved        
     def txt_not(self):
         self.destroy()
         messagebox.showinfo('Recieve msg','You have received one text , please select "Recieve text " and click on Recieve')
 
+    
+
 class receive_file(Tk):
     def __init__(self,user):
+
          #create screen layout  
         super().__init__()
         self.user=user
@@ -232,25 +352,30 @@ class receive_file(Tk):
         self.resizable(False,False)
         frame = Frame(self,bg='#669BBC')
         frame.place(x=120,y=50,width=650,height=600)
+
         #create buttones 
         headline = Label(frame, text='Select Folder.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=100,y=50)
         btn_dir = Button(frame,text='Choose Folder',bg='#F3A712',bd=0,font=('Courier',18),command=self.dialoge).place(x=50,y=50,width=350,height=50)
-        btn_save = Button(frame,text='Save',bg='#F3A712',bd=0,font=('Courier',10),command=self.save_to).place(x=180,y=150,width=100,height=40)
+        btn_save = Button(frame,text='Save',bg='#F3A712',bd=0,font=('Courier',10),command=self.rec_to).place(x=180,y=150,width=100,height=40)
         self.path_lbl = Label(frame, fg='red',bg='white',relief=RAISED)
         self.path_lbl.pack(pady=110)
         self.path_lbl.place(x=170,y=110)
         btn_back = Button(frame,text='Back',bg='#F3A712',bd=0,font=('Courier',10),command=self.back_btn).place(x=0,y=0,width=60,height=30)
+
        #back to previous page        
     def back_btn(self):
         reciever(self.user)
         self.destroy()
+
         #open file explorer to choose folder path
     def dialoge(self):
         self.folder = filedialog.askdirectory() #folder path
         self.path_lbl.config(text=self.folder)
-        #save the file in folder
-    def save_to(self):
 
+        #save the file in folder
+    def rec_to(self):
+
+        #create socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Trying to connect to socket.
         try:
@@ -259,7 +384,10 @@ class receive_file(Tk):
             print("Unable to connect")
             exit(0)
 
-        # Send file details.
+        #send user name to sender
+        sock.send(bytes(self.user,"utf-8"))
+
+        # receive file details.
         file_name = sock.recv(100).decode()
         file_size = sock.recv(100).decode()
 
@@ -283,9 +411,13 @@ class receive_file(Tk):
         # Closing the socket.
         sock.close()
 
+        #call decrypt function to decrypt the file 
+        #this function recuired folder path , file name and user name 
+        dec(str(self.folder)+"/"+str(os.path.basename(file_name)),self.user,str(self.folder))
+
 
 class receive_text(Tk):
-    global_msgb = ""
+
     def __init__(self,user):
          #create screen layout  
         super().__init__()
@@ -296,6 +428,7 @@ class receive_text(Tk):
         self.resizable(False,False)
         frame = Frame(self,bg='#669BBC')
         frame.place(x=120,y=50,width=650,height=600)
+
         #create buttones
         headline = Label(frame, text='Cipher Text.', fg='white',bg='#669BBC',font=('Courier',25,'bold'),pady=0).place(x=100,y=50)
         self.txt= Text(frame,width=30,height=0, font = ('arial',20,'bold'))
@@ -310,24 +443,53 @@ class receive_text(Tk):
         btn_rec2 = Button(frame,text='Recieve',bg='#F3A712',bd=0,font=('Courier',10),command=self.rec_to2).place(x=120,y=400,width=100,height=40)
         btn_clr2 = Button(frame,text='Clear',bg='#F3A712',bd=0,font=('Courier',10),command=self.clr2).place(x=240,y=400,width=100,height=40)
         btn_back = Button(frame,text='Back',bg='#F3A712',bd=0,font=('Courier',10),command=self.back_btn).place(x=0,y=0,width=60,height=30)
+
        #back to previous page           
     def back_btn(self):
         reciever(self.user)
         self.destroy()
+
         #recieve text and write the cipher text
     def rec_to(self):
+
+        #create socket and connect with sender
         self.client_connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_connection.connect((HOST_IP, Port_NO))
-        self.message = self.client_connection.recv(1024).decode()
-        self.global_msg=self.message
+
+        #send user name to sender
+        self.client_connection.send(bytes(self.user,"utf-8"))
+
+        #recieve encrypted msg and print it
+        self.message = self.client_connection.recv(1024)
         self.txt.insert(1.0,self.message)
+
+        #close connection
         self.client_connection.close()
+
        #clear text  1
     def clr(self):
         self.txt.delete(1.0,END)
         #write plain text 
+
     def rec_to2(self):
-        self.txt2.insert(1.0,self.global_msg)
+
+        # load the private key to decrypt the public key
+        prkey = open(f'{self.user}PrivateKey.key','rb')
+        pkey = prkey.read()
+        private_key = rsa.PrivateKey.load_pkcs1(pkey)
+
+        #open encrypted symmetric key
+        e = open('encrypted_key','rb')
+        ekey = e.read()
+
+        # decrypt symmetric key with the private key
+        dpubkey = rsa.decrypt(ekey,private_key)
+        cipher = Fernet(dpubkey)
+
+        #decrypt the msg and print it
+        decrypted_data = cipher.decrypt(self.message).decode()
+        self.txt2.insert(1.0,decrypted_data)
+
         #clear text 2
     def clr2(self):
         self.txt2.delete(1.0,END)
@@ -356,19 +518,29 @@ class signinpage(Tk):
 
         self.btn_login = Button(self.frame2,text='Register',bg='#F3A712',bd=0,font=('Courier',18),command=self.register).place(x=30,y=380,width=350,height=50)
 
-
+    #this function will create new user
     def register(self):
 
+        #create random number as a salt with the password
         self.ran = random.randint(0,100)
-        self.email_in = str(self.email2.get())
+
+        #get the user name
+        self.email_in = str(self.email2.get().lower())
+
+        #get the password and add the salt
         self.pass_in = str(self.password2.get()+str(self.ran))
 
+        #hashing the password
         self.hash_obj = hashlib.md5(self.pass_in.encode())
         self.md5_hash = self.hash_obj.hexdigest()
 
-    # python object to be appended
+        # python object to be appended
         self.data = [ {  "password": self.md5_hash, "salt": self.ran  } ]
+
+        #call write_json function to store the data
         self.write_json(self.data,str(self.email_in),'users_data.json')
+
+        #call function to create private and public key for the user
         self.generate_keys()
         self.destroy()
         login()
@@ -385,10 +557,12 @@ class signinpage(Tk):
             # convert back to json.
             json.dump(file_data, file, indent = 4)
     
+    #this function will create private and public key to the user
     def generate_keys(self):
+
         #create pri and pub keys
         (self.publickey,self.privatekey) = rsa.newkeys(1025)
-        print(type(self.publickey))
+
 
         #write pub key in file
         self.pubkey = open(f"{self.email_in}PublicKey.key",'wb')
@@ -433,21 +607,24 @@ class login(Tk):
 
     # this function will check if the user registered or not if it is register it will login into home page
     def login(self):
-        record1 = json.load(open("users_data.json"))          
-        pass_list = [ d["password"] for d in record1[str(self.email.get())] ]
-        salt_list = [ d["salt"] for d in record1[str(self.email.get())] ]
-        for i in salt_list:   
-            self.currpass=self.password.get()+str(i)
-            hash_obj = hashlib.md5(self.currpass.encode())
-            md5_hash = hash_obj.hexdigest()
+        try:
+            record1 = json.load(open("users_data.json"))      
+            pass_list = [ d["password"] for d in record1[str(self.email.get().lower())] ]
+            salt_list = [ d["salt"] for d in record1[str(self.email.get().lower())] ]
+            for i in salt_list:   
+                self.currpass=self.password.get()+str(i)
+                hash_obj = hashlib.md5(self.currpass.encode())
+                md5_hash = hash_obj.hexdigest()
 
-            if (md5_hash) in pass_list:
-                self.user=self.email.get()
-                self.destroy()
-                mainpage(self.user)
-                
-            else:
-                messagebox.showerror("Error", "Incorrect Email or Password, Please Try Again.")
+                if (md5_hash) in pass_list :
+                    self.user=self.email.get()
+                    self.destroy()
+                    mainpage(self.user)
+                    
+                else:
+                    messagebox.showerror("Error", "Incorrect Email or Password, Please Try Again.")
+        except:
+                    messagebox.showerror("Error", "Incorrect Email or Password, Please Try Again.")           
 
 
 if __name__ == "__main__":
