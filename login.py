@@ -94,35 +94,6 @@ class sender(Tk):
         self.destroy()
 
 
-    #this function will decrypt the file
-def dec(path,user,folder):
-
-    # load the private key 
-    prkey = open(f'{user}PrivateKey.key','rb')
-    pkey = prkey.read()
-    private_key = rsa.PrivateKey.load_pkcs1(pkey)
-
-    #load the encrypted symmetric key
-    e = open('encrypted_key','rb')
-    ekey = e.read()
-
-    #decrypt symmetric key with the private key
-    dpubkey = rsa.decrypt(ekey,private_key)
-    cipher = Fernet(dpubkey)
-
-    #open and read the encrypted file
-    encrypted_data = open(path,'rb')
-    edata = encrypted_data.read()
-
-    #decrypt the data
-    decrypted_data = cipher.decrypt(edata)
-
-    #write the decrypted data in file
-    f = open(folder+'/decrypted'+str(os.path.basename(path)),'wb')
-    f.write(decrypted_data)
-    f.close()
-    os.remove(str(os.path.basename(path)))
-
 
 class send_file(Tk):
     def __init__(self,user):
@@ -191,8 +162,9 @@ class send_file(Tk):
 
         # encrypt the symmetric key file with the public key
         encrypted_key = rsa.encrypt(key,pubkey)
-        ekey = open('encrypted_key','wb')
-        ekey.write(encrypted_key)
+
+        #send the encrypted symmetric key 
+        client.send(encrypted_key)
 
         # Getting file details.
         file_name = 'encrypted'+str(os.path.basename(self.file_path))
@@ -277,10 +249,11 @@ class send_text(Tk):
         pkdata = pkey.read()
         pubkey = rsa.PublicKey.load_pkcs1(pkdata)
 
-        # encrypt the symmetric key file with the public key
+        # encrypt the symmetric key with the public key
         encrypted_key = rsa.encrypt(key,pubkey)
-        ekey = open('encrypted_key','wb')
-        ekey.write(encrypted_key)
+
+        #send the encrypted symmetric key
+        self.client_socket.send(encrypted_key)
 
        #send the encrypted data to client
         self.client_socket.send(encrypted_data)
@@ -387,6 +360,9 @@ class receive_file(Tk):
         #send user name to sender
         sock.send(bytes(self.user,"utf-8"))
 
+        #recieve the encrypted symmetric key
+        symmetric_key = sock.recv(1024)
+
         # receive file details.
         file_name = sock.recv(100).decode()
         file_size = sock.recv(100).decode()
@@ -413,7 +389,34 @@ class receive_file(Tk):
 
         #call decrypt function to decrypt the file 
         #this function recuired folder path , file name and user name 
-        dec(str(self.folder)+"/"+str(os.path.basename(file_name)),self.user,str(self.folder))
+        dec(str(self.folder)+"/"+str(os.path.basename(file_name)),self.user,str(self.folder),symmetric_key)
+
+        
+    #this function will decrypt the file
+def dec(path,user,folder,symmetric_key):
+
+    # load the private key 
+    prkey = open(f'{user}PrivateKey.key','rb')
+    pkey = prkey.read()
+    private_key = rsa.PrivateKey.load_pkcs1(pkey)
+
+
+    #decrypt symmetric key with the private key
+    dpubkey = rsa.decrypt(symmetric_key,private_key)
+    cipher = Fernet(dpubkey)
+
+    #open and read the encrypted file
+    encrypted_data = open(path,'rb')
+    edata = encrypted_data.read()
+
+    #decrypt the data
+    decrypted_data = cipher.decrypt(edata)
+
+    #write the decrypted data in file
+    f = open(folder+'/decrypted'+str(os.path.basename(path)),'wb')
+    f.write(decrypted_data)
+    f.close()
+    os.remove(str(os.path.basename(path)))
 
 
 class receive_text(Tk):
@@ -459,6 +462,9 @@ class receive_text(Tk):
         #send user name to sender
         self.client_connection.send(bytes(self.user,"utf-8"))
 
+        #recieve the encrypt symmetric key
+        self.symmetric_key = self.client_connection.recv(1024)
+
         #recieve encrypted msg and print it
         self.message = self.client_connection.recv(1024)
         self.txt.insert(1.0,self.message)
@@ -478,12 +484,8 @@ class receive_text(Tk):
         pkey = prkey.read()
         private_key = rsa.PrivateKey.load_pkcs1(pkey)
 
-        #open encrypted symmetric key
-        e = open('encrypted_key','rb')
-        ekey = e.read()
-
         # decrypt symmetric key with the private key
-        dpubkey = rsa.decrypt(ekey,private_key)
+        dpubkey = rsa.decrypt(self.symmetric_key,private_key)
         cipher = Fernet(dpubkey)
 
         #decrypt the msg and print it
