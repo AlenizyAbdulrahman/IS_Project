@@ -39,6 +39,7 @@ class mainpage(Tk):
 
         #create buttones
         headline = Label(frame, text='Please select option.', fg='white',bg='#669BBC',font=('Courier',30,'bold'),pady=0).place(x=0,y=50)
+        headline2 = Label(frame, text=f'Welcome {self.user}', fg='white',bg='#669BBC',font=('Courier',30,'bold'),pady=0).place(x=100,y=0)
         btn_send = Button(frame,text='Send',bg='#F3A712',bd=0,font=('Courier',18),command=self.send).place(x=50,y=120,width=350,height=50)
         btn_recive = Button(frame,text='Receive',bg='#F3A712',bd=0,font=('Courier',18),command=self.recieve).place(x=50,y=200,width=350,height=50)
         btn_back = Button(frame,text='Back',bg='#F3A712',bd=0,font=('Courier',10),command=self.back_btn).place(x=0,y=0,width=60,height=30)
@@ -138,8 +139,9 @@ class send_file(Tk):
         myfile = open(self.file_path,'rb')
         myfiledata= myfile.read()
 
-        # encrypt the data
+        # encrypt the data (AES)
         encrypted_data = cipher.encrypt(myfiledata)
+        #write the encrypted data into temp file
         edata = open('encrypted'+str(os.path.basename(self.file_path)),'wb')
         edata.write(encrypted_data)
 
@@ -160,7 +162,7 @@ class send_file(Tk):
         pkdata = pkey.read()
         pubkey = rsa.PublicKey.load_pkcs1(pkdata)
 
-        # encrypt the symmetric key file with the public key
+        # encrypt the symmetric key  with the public key
         encrypted_key = rsa.encrypt(key,pubkey)
 
         #send the encrypted symmetric key 
@@ -237,11 +239,11 @@ class send_text(Tk):
         #get user name
         user_name = self.client_socket.recv(1024).decode()
 
-    # create the symmetric key
+    # create the symmetric key (Aes)
         key = Fernet.generate_key()
         cipher = Fernet(key)
 
-        # encrypt the data
+        # encrypt the data (AES)
         encrypted_data = cipher.encrypt(self.txt.get().encode()) 
 
         # open the public key file and load the file
@@ -501,14 +503,14 @@ class signinpage(Tk):
     def __init__(self):
         super().__init__()
         self.geometry("650x600")
-        self.title('Sign-in')
+        self.title('Sign Up')
         self.config(bg='#669BBC')
         self.resizable(False,False)
 
         self.frame2 = Frame(self,bg='#669BBC')
         self.frame2.place(x=120,y=50,width=550,height=500)
 
-        self.headline2 = Label(self.frame2, text='Sign-in', fg='white',bg='#669BBC',font=('Courier',55,'bold'),pady=20).place(x=100)
+        self.headline2 = Label(self.frame2, text='Sign Up', fg='white',bg='#669BBC',font=('Courier',55,'bold'),pady=20).place(x=100)
 
         self.txt_email2 = Label(self.frame2,text='Username',fg='white',bg='#669BBC',font=('Courier',18),pady=20).place(x=30,y=120)
         self.email2 = Entry(self.frame2,font=('Courier',18,'bold'))
@@ -565,7 +567,6 @@ class signinpage(Tk):
         #create pri and pub keys
         (self.publickey,self.privatekey) = rsa.newkeys(1025)
 
-
         #write pub key in file
         self.pubkey = open(f"{self.email_in}PublicKey.key",'wb')
         self.pubkey.write(self.publickey.save_pkcs1('PEM'))
@@ -597,11 +598,11 @@ class login(Tk):
         self.email.place(x=30,y=185,width=350,height=45)
 
         txt_pass = Label(frame,text='Password',fg='white',bg='#669BBC',font=('Courier',18),pady=20).place(x=30,y=240)
-        self.password = Entry(frame,font=('Courier',18,'bold'))
+        self.password = Entry(frame,show = '*',font=('Courier',18,'bold'))
         self.password.place(x=30,y=300,width=350,height=45)
 
         btn_login = Button(frame,text='Login',bg='#F3A712',bd=0,font=('Courier',18),command=self.login).place(x=30,y=380,width=350,height=50)
-        btn_signin = Button(frame,text='Sign-in',bg='#F3A712',bd=0,font=('Courier',10),command=self.signin).place(x=160,y=450,width=100,height=40)
+        btn_signin = Button(frame,text='Sign Up',bg='#F3A712',bd=0,font=('Courier',10),command=self.signin).place(x=160,y=450,width=100,height=40)
 
     def signin(self):
         signinpage()
@@ -610,9 +611,9 @@ class login(Tk):
     # this function will check if the user registered or not if it is register it will login into home page
     def login(self):
         try:
-            record1 = json.load(open("users_data.json"))      
-            pass_list = [ d["password"] for d in record1[str(self.email.get().lower())] ]
-            salt_list = [ d["salt"] for d in record1[str(self.email.get().lower())] ]
+            json_file = json.load(open("users_data.json"))      
+            pass_list = [ x["password"] for x in json_file[str(self.email.get().lower())] ]
+            salt_list = [ x["salt"] for x in json_file[str(self.email.get().lower())] ]
             for i in salt_list:   
                 self.currpass=self.password.get()+str(i)
                 hash_obj = hashlib.md5(self.currpass.encode())
